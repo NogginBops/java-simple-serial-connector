@@ -1,0 +1,30 @@
+# General
+C:
+*.log
+*.log*
+MANIFEST.MF
+plugins.state
+osgi-cache
+atlassian-ide-plugin.xml
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Intellij
+.idea/
+*.iml
+*.iws
+*.ids
+*.ipr
+*.db
+smartset.log
+
+# Mac
+.DS_Store
+
+# Maven
+target/
+bin/
+out/
