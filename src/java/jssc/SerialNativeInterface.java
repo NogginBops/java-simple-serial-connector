@@ -36,7 +36,7 @@ import java.io.InputStreamReader;
  */
 public class SerialNativeInterface {
 
-    private static final String libVersion = "2.8"; //jSSC-2.8.0 Release from 24.01.2014
+    private static final String libVersion = "2.9"; //jSSC-2.8.0 Release from 24.01.2014
     private static final String libMinorSuffix = "0"; //since 0.9.0
 
     public static final int OS_LINUX = 0;
@@ -396,26 +396,29 @@ public class SerialNativeInterface {
      * @return If the operation is successfully completed, the method returns true, otherwise false
      */
     public native boolean setDTR(long handle, boolean value);
-
+    
     /**
-     * Read data from port
+     * Read data from port into buffer
      * 
      * @param handle handle of opened port
-     * @param byteCount count of bytes required to read
-     * 
-     * @return Method returns the array of read bytes
+     * @param buffer array of bytes to read to
+     * @param offset the start index to read to
+     * @param length how many bytes to read
+     * @return The input array with the specified bytes read
      */
-    public native byte[] readBytes(long handle, int byteCount);
-
+    public native byte[] readBytes(long handle, byte[] buffer, int offset, int length);
+    
     /**
      * Write data to port
      * 
      * @param handle handle of opened port
      * @param buffer array of bytes to write
+     * @param offset the offset in the array to start writing from
+     * @param length how many bytes to write from the the buffer
      * 
      * @return If the operation is successfully completed, the method returns true, otherwise false
      */
-    public native boolean writeBytes(long handle, byte[] buffer);
+    public native boolean writeBytes(long handle, byte[] buffer, int offset, int length);
 
     /**
      * Get bytes count in buffers of port

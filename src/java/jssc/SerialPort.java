@@ -26,7 +26,6 @@ package jssc;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
 
 /**
  *
@@ -346,7 +345,35 @@ public class SerialPort {
      */
     public boolean writeBytes(byte[] buffer) throws SerialPortException {
         checkPortOpened("writeBytes()");
-        return serialInterface.writeBytes(portHandle, buffer);
+        return serialInterface.writeBytes(portHandle, buffer, 0, buffer.length);
+    }
+    
+    /**
+     * Write byte array to port
+     *
+     * @return If the operation is successfully completed, the method returns true, otherwise false
+     * 
+     * @throws SerialPortException
+     */
+    public boolean writeBytes(byte[] buffer, int length) throws SerialPortException {
+        checkPortOpened("writeBytes()");
+        if (length > buffer.length) throw new IndexOutOfBoundsException("length cannot exceed buffer.length");
+        return serialInterface.writeBytes(portHandle, buffer, 0, length);
+    }
+    
+    /**
+     * Write byte array to port
+     *
+     * @return If the operation is successfully completed, the method returns true, otherwise false
+     * 
+     * @throws SerialPortException
+     */
+    public boolean writeBytes(byte[] buffer, int offset, int length) throws SerialPortException {
+        checkPortOpened("writeBytes()");
+        if (offset < 0) throw new IllegalArgumentException("offset cannot be less than zero!");
+        if (length < 0) throw new IllegalArgumentException("length cannot be less than zero!");
+        if (offset + length > buffer.length) throw new IllegalArgumentException("offset + length cannot exceed buffer.length");
+        return serialInterface.writeBytes(portHandle, buffer, offset, length);
     }
 
     /**
@@ -433,10 +460,42 @@ public class SerialPort {
      * @throws SerialPortException
      */
     public byte[] readBytes(int byteCount) throws SerialPortException {
-        checkPortOpened("readBytes()");
-        return serialInterface.readBytes(portHandle, byteCount);
+        checkPortOpened("readBytes(int)");
+        byte[] buffer = new byte[byteCount];
+        return serialInterface.readBytes(portHandle, buffer, 0, buffer.length);
     }
-
+    
+    /**
+     * 
+     * @param buffer
+     * @param offset
+     * @param length
+     * @return
+     * @throws SerialPortException
+     */
+    public byte[] readBytes(byte[] buffer) throws SerialPortException {
+    	checkPortOpened("readBytes(byte[])");
+        return serialInterface.readBytes(portHandle, buffer, 0, buffer.length);
+    }
+    
+    /**
+     * 
+     * @param buffer
+     * @param offset
+     * @param length
+     * @return
+     * @throws SerialPortException
+     */
+    public byte[] readBytes(byte[] buffer, int offset, int length) throws SerialPortException {
+    	checkPortOpened("readBytes(byte[], int, int)");
+        if (offset < 0) throw new IllegalArgumentException("offset cannot be less than zero!");
+        if (length < 0) throw new IllegalArgumentException("length cannot be less than zero!");
+    	if (offset + length > buffer.length) {
+    		throw new IllegalArgumentException("offset + length cannot exceed buffer.length");
+    	}
+    	return serialInterface.readBytes(portHandle, buffer, offset, length);
+    }
+    
     /**
      * Read string from port
      *
@@ -556,6 +615,7 @@ public class SerialPort {
                 break;
             }
             try {
+            	Thread.yield();
                 Thread.sleep(0, 100);//Need to sleep some time to prevent high CPU loading
             }
             catch (InterruptedException ex) {
@@ -1196,19 +1256,19 @@ public class SerialPort {
 
         @Override
         public void run() {
-            while(!super.threadTerminated){
+            while (!super.threadTerminated) {
                 int[][] eventArray = waitEvents();
                 int mask = getLinuxMask();
                 boolean interruptTxChanged = false;
                 int errorMask = 0;
-                for(int i = 0; i < eventArray.length; i++){
+                for (int i = 0; i < eventArray.length; i++) {
                     boolean sendEvent = false;
                     int eventType = eventArray[i][0];
                     int eventValue = eventArray[i][1];
-                    if(eventType > 0 && !super.threadTerminated){
-                        switch(eventType){
+                    if (eventType > 0 && !super.threadTerminated) {
+                        switch (eventType) {
                             case INTERRUPT_BREAK:
-                                if(eventValue != interruptBreak){
+                                if (eventValue != interruptBreak) {
                                     interruptBreak = eventValue;
                                     if((mask & MASK_BREAK) == MASK_BREAK){
                                         eventType = MASK_BREAK;
@@ -1218,68 +1278,68 @@ public class SerialPort {
                                 }
                                 break;
                             case INTERRUPT_TX:
-                                if(eventValue != interruptTX){
+                                if (eventValue != interruptTX) {
                                     interruptTX = eventValue;
                                     interruptTxChanged = true;
                                 }
                                 break;
                             case INTERRUPT_FRAME:
-                                if(eventValue != interruptFrame){
+                                if (eventValue != interruptFrame) {
                                     interruptFrame = eventValue;
                                     errorMask |= ERROR_FRAME;
                                 }
                                 break;
                             case INTERRUPT_OVERRUN:
-                                if(eventValue != interruptOverrun){
+                                if (eventValue != interruptOverrun) {
                                     interruptOverrun = eventValue;
                                     errorMask |= ERROR_OVERRUN;
                                 }
                                 break;
                             case INTERRUPT_PARITY:
-                                if(eventValue != interruptParity){
+                                if (eventValue != interruptParity) {
                                     interruptParity = eventValue;
                                     errorMask |= ERROR_PARITY;
                                 }
-                                if((mask & MASK_ERR) == MASK_ERR && errorMask != 0){
+                                if ((mask & MASK_ERR) == MASK_ERR && errorMask != 0) {
                                     eventType = MASK_ERR;
                                     eventValue = errorMask;
                                     sendEvent = true;
                                 }
                                 break;
                             case MASK_CTS:
-                                if(eventValue != preCTS){
+                                if (eventValue != preCTS) {
                                     preCTS = eventValue;
-                                    if((mask & MASK_CTS) == MASK_CTS){
+                                    if ((mask & MASK_CTS) == MASK_CTS) {
                                         sendEvent = true;
                                     }
                                 }
                                 break;
                             case MASK_DSR:
-                                if(eventValue != preDSR){
+                                if (eventValue != preDSR) {
                                     preDSR = eventValue;
-                                    if((mask & MASK_DSR) == MASK_DSR){
+                                    if ((mask & MASK_DSR) == MASK_DSR) {
                                         sendEvent = true;
                                     }
                                 }
                                 break;
                             case MASK_RING:
-                                if(eventValue != preRING){
+                                if (eventValue != preRING) {
                                     preRING = eventValue;
-                                    if((mask & MASK_RING) == MASK_RING){
+                                    if ((mask & MASK_RING) == MASK_RING) {
                                         sendEvent = true;
                                     }
                                 }
                                 break;
                             case MASK_RLSD: /*DCD*/
-                                if(eventValue != preRLSD){
+                                if (eventValue != preRLSD) {
                                     preRLSD = eventValue;
-                                    if((mask & MASK_RLSD) == MASK_RLSD){
+                                    if ((mask & MASK_RLSD) == MASK_RLSD) {
                                         sendEvent = true;
                                     }
                                 }
                                 break;
                             case MASK_RXCHAR:
-                                if(((mask & MASK_RXCHAR) == MASK_RXCHAR) && (eventValue > 0)){
+                                if (((mask & MASK_RXCHAR) == MASK_RXCHAR) && (eventValue > 0)) {
                                     sendEvent = true;
                                 }
                                 break;
@@ -1290,21 +1350,21 @@ public class SerialPort {
                                 }
                                 break;*/
                             case MASK_TXEMPTY:
-                                if(((mask & MASK_TXEMPTY) == MASK_TXEMPTY) && (eventValue == 0) && interruptTxChanged){
+                                if (((mask & MASK_TXEMPTY) == MASK_TXEMPTY) && (eventValue == 0) && interruptTxChanged) {
                                     sendEvent = true;
                                 }
                                 break;
                         }
-                        if(sendEvent){
+                        if (sendEvent) {
                             eventListener.serialEvent(new SerialPortEvent(portName, eventType, eventValue));
                         }
                     }
                 }
                 //Need to sleep some time
                 try {
-                    Thread.sleep(0, 100);
-                }
-                catch (Exception ex) {
+                	Thread.yield();
+                    //Thread.sleep(0, 100);
+                } catch (Exception ex) {
                     //Do nothing
                 }
             }

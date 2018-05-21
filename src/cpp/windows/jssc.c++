@@ -224,7 +224,7 @@ JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_setDTR
  * buffer - byte array for sending
  */
 JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_writeBytes
-  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer){
+  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer, jint offset, jint length){
     HANDLE hComm = (HANDLE)portHandle;
     DWORD lpNumberOfBytesTransferred;
     DWORD lpNumberOfBytesWritten;
@@ -232,7 +232,7 @@ JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_writeBytes
     jboolean returnValue = JNI_FALSE;
     jbyte* jBuffer = env->GetByteArrayElements(buffer, JNI_FALSE);
     overlapped->hEvent = CreateEventA(NULL, true, false, NULL);
-    if(WriteFile(hComm, jBuffer, (DWORD)env->GetArrayLength(buffer), &lpNumberOfBytesWritten, overlapped)){
+    if(WriteFile(hComm, jBuffer + offset, (DWORD) length, &lpNumberOfBytesWritten, overlapped)){
         returnValue = JNI_TRUE;
     }
     else if(GetLastError() == ERROR_IO_PENDING){
@@ -251,30 +251,33 @@ JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_writeBytes
 /*
  * Read data from port
  * portHandle - port handle
- * byteCount - count of bytes for reading
+ * buffer - the array to read data to
+ * offset - the offset in the array to read data to
+ * length - count of bytes to read
  */
 JNIEXPORT jbyteArray JNICALL Java_jssc_SerialNativeInterface_readBytes
-  (JNIEnv *env, jobject object, jlong portHandle, jint byteCount){
+  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer, jint offset, jint length){
     HANDLE hComm = (HANDLE)portHandle;
     DWORD lpNumberOfBytesTransferred;
     DWORD lpNumberOfBytesRead;
     OVERLAPPED *overlapped = new OVERLAPPED();
-    jbyte lpBuffer[byteCount];
-    jbyteArray returnArray = env->NewByteArray(byteCount);
+    jbyte lpBuffer[length];
+    // jbyteArray returnArray = env->GetByteArrayElements(buffer, JNI_FALSE);
     overlapped->hEvent = CreateEventA(NULL, true, false, NULL);
-    if(ReadFile(hComm, lpBuffer, (DWORD)byteCount, &lpNumberOfBytesRead, overlapped)){
-        env->SetByteArrayRegion(returnArray, 0, byteCount, lpBuffer);
+    if(ReadFile(hComm, lpBuffer, (DWORD)length, &lpNumberOfBytesRead, overlapped)){
+        env->SetByteArrayRegion(buffer, offset, length, lpBuffer);
     }
     else if(GetLastError() == ERROR_IO_PENDING){
         if(WaitForSingleObject(overlapped->hEvent, INFINITE) == WAIT_OBJECT_0){
             if(GetOverlappedResult(hComm, overlapped, &lpNumberOfBytesTransferred, false)){
-                env->SetByteArrayRegion(returnArray, 0, byteCount, lpBuffer);
+                env->SetByteArrayRegion(buffer, offset, length, lpBuffer);
             }
         }
     }
+    // env->ReleaseByteArrayElements(buffer, jBuffer, 0);
     CloseHandle(overlapped->hEvent);
     delete overlapped;
-    return returnArray;
+    return buffer;
 }
 
 /*

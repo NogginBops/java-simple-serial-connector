@@ -514,39 +514,39 @@ JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_setDTR
  * Writing data to the port
  */
 JNIEXPORT jboolean JNICALL Java_jssc_SerialNativeInterface_writeBytes
-  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer){
+  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer, jint offset, jint length){
     jbyte* jBuffer = env->GetByteArrayElements(buffer, JNI_FALSE);
-    jint bufferSize = env->GetArrayLength(buffer);
-    jint result = write(portHandle, jBuffer, (size_t)bufferSize);
+    jint result = write(portHandle, jBuffer + offset, (size_t)length);
     env->ReleaseByteArrayElements(buffer, jBuffer, 0);
-    return result == bufferSize ? JNI_TRUE : JNI_FALSE;
+    return result == length ? JNI_TRUE : JNI_FALSE;
 }
 
 /* OK */
 /*
  * Reading data from the port
  *
- * Rewrited in 2.5.0 (using select() function for correct block reading in MacOS X)
  */
 JNIEXPORT jbyteArray JNICALL Java_jssc_SerialNativeInterface_readBytes
-  (JNIEnv *env, jobject object, jlong portHandle, jint byteCount){
+  (JNIEnv *env, jobject object, jlong portHandle, jbyteArray buffer, jint offset, jint length){
     fd_set read_fd_set;
-    jbyte *lpBuffer = new jbyte[byteCount];
-    int byteRemains = byteCount;
+    jbyte* byteBuffer = env->GetByteArrayElements(buffer, JNI_FALSE);
+    //jbyte *lpBuffer = new jbyte[byteCount];
+    int byteRemains = length;
     while(byteRemains > 0) {
         FD_ZERO(&read_fd_set);
         FD_SET(portHandle, &read_fd_set);
         select(portHandle + 1, &read_fd_set, NULL, NULL, NULL);
-        int result = read(portHandle, lpBuffer + (byteCount - byteRemains), byteRemains);
+        int result = read(portHandle, (byteBuffer + offset) + (length - byteRemains), byteRemains);
         if(result > 0){
             byteRemains -= result;
         }
     }
     FD_CLR(portHandle, &read_fd_set);
-    jbyteArray returnArray = env->NewByteArray(byteCount);
-    env->SetByteArrayRegion(returnArray, 0, byteCount, lpBuffer);
-    delete lpBuffer;
-    return returnArray;
+    // jbyteArray returnArray = env->NewByteArray(byteCount);
+    // env->SetByteArrayRegion(returnArray, 0, byteCount, lpBuffer);
+    // delete lpBuffer;
+    env->ReleaseByteArrayElements(buffer, byteBuffer, 0);
+    return buffer;
 }
 
 /* OK */
